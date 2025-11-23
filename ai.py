@@ -24,7 +24,7 @@ from telegram.ext import (
 )
 
 # === Конфигурация ===
-TELEGRAM_TOKEN = "8115570934:AAGFJFnNDo5lxDlE3XZEQ_W63WjuoYYHJJM"
+TELEGRAM_TOKEN = "8316451286:AAHcqTvt4pJ_o0bvmbVqusmo58M3Qgd5n4c"
 OPENROUTER_API_KEY = "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"
 BOT_NAME = "Gugapiti"
 
@@ -615,3 +615,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
