@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 
 # Вставь сюда токен своего бота
-TOKEN = "8288661704:AAGqMezt0_iEzQfVM3eJxqAd87Ihakucg3o"
+TOKEN = "8288661704:AAH2FFO0NbU9FULEJ8MwvPAv7KYSSDMQtSQ"
 bot = telebot.TeleBot(TOKEN)
 
 # Ссылка на чат
@@ -83,3 +83,4 @@ def callback(call):
 
 print("Бот запущен...")
 bot.polling()
+
