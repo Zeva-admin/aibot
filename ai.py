@@ -22,9 +22,12 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 from groq import Groq
 
+from flask import Flask
+import threading
+
 # ================== НАСТРОЙКИ ==================
 
-TOKEN = os.environ.get("BOT_TOKEN", "8288661704:AAH2FFO0NbU9FULEJ8MwvPAv7KYSSDMQtSQ").strip()
+TOKEN = os.environ.get("BOT_TOKEN", "8548607252:AAFFzd__XttKj6GxcFh_IygRQbgTu7-xL68").strip()
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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").strip()
 
 if not TOKEN:
@@ -191,7 +194,6 @@ def normalize_description(desc: str) -> str:
         return ""
     d = desc.strip()
 
-    # remove typical AI self-references
     patterns = [
         r"\bкак\s+ии\b",
         r"\bя\s+как\s+ии\b",
@@ -204,7 +206,6 @@ def normalize_description(desc: str) -> str:
     for p in patterns:
         d = re.sub(p, "", d, flags=re.IGNORECASE)
 
-    # collapse whitespace
     d = re.sub(r"[ \t]+", " ", d)
     d = re.sub(r"\n{3,}", "\n\n", d)
     return d.strip()
@@ -262,7 +263,6 @@ def cooldown_guard(func):
                 pass
             return
 
-        # compute chat_id for error response
         chat_id = None
         try:
             if isinstance(message_or_call, telebot.types.CallbackQuery):
@@ -522,7 +522,6 @@ def products_list_kb(ptype: str, page: int, pages: int) -> types.InlineKeyboardM
     end = start + PAGINATION_PAGE_SIZE
     part = items[start:end]
 
-    # buttons for each product -> open product page
     for p in part:
         pid = p.get("id")
         title = p.get("title", "")
@@ -1133,7 +1132,6 @@ def text_handler(message):
         handle_state_text(message, st)
         return
 
-    # user UI
     if text == "🛒 Магазин":
         send_clean(message.chat.id, "Выберите категорию:", reply_markup=shop_menu())
         return
@@ -1162,7 +1160,6 @@ def text_handler(message):
         send_clean(message.chat.id, "Главное меню:", reply_markup=main_menu())
         return
 
-    # admin UI
     if text == "📦 Управление товарами" and is_admin(uid):
         send_clean(message.chat.id, "📦 Управление товарами:", reply_markup=admin_products_menu())
         return
@@ -1292,7 +1289,6 @@ def handle_state_text(message, st):
         clear_state(uid)
         return
 
-    # admin reply to dispute (NEW)
     if action == "admin_dispute_reply":
         target_uid = int(data.get("user_id"))
         order_id = int(data.get("order_id"))
@@ -1310,7 +1306,6 @@ def handle_state_text(message, st):
         clear_state(uid)
         return
 
-    # admin settings
     if action == "change_admin_password":
         cfg = get_config()
         cfg["admin_password"] = text
@@ -1335,7 +1330,6 @@ def handle_state_text(message, st):
         send_clean(chat_id, "✅ Username поддержки обновлён.", reply_markup=admin_main_menu())
         return
 
-    # admin add/remove id
     if action == "add_admin_by_id":
         try:
             new_id = int(text)
@@ -1368,7 +1362,6 @@ def handle_state_text(message, st):
             bot.send_message(chat_id, "❌ Этот ID не админ или не найден.")
         return
 
-    # admin add product with description
     if action == "admin_add_product" and step == 0:
         if len(text) < 2:
             bot.send_message(chat_id, "Введите название (минимум 2 символа):")
@@ -1424,7 +1417,6 @@ def handle_state_text(message, st):
         send_clean(chat_id, f"✅ Товар добавлен. ID: <code>{pid}</code>", reply_markup=admin_main_menu())
         return
 
-    # admin add escort with description
     if action == "admin_add_escort" and step == 0:
         if len(text) < 2:
             bot.send_message(chat_id, "Введите название (минимум 2 символа):")
@@ -1470,7 +1462,6 @@ def handle_state_text(message, st):
         send_clean(chat_id, f"✅ Сопровождение добавлено. ID: <code>{pid}</code>", reply_markup=admin_main_menu())
         return
 
-    # delete/change price same as before
     if action == "admin_delete_product":
         try:
             pid = int(text)
@@ -1577,7 +1568,6 @@ def handle_state_text(message, st):
         send_clean(chat_id, f"✅ Цена сопровождения обновлена для ID <code>{pid}</code>: <b>{price} TMT</b>", reply_markup=admin_main_menu())
         return
 
-    # change description
     if action == "admin_change_desc" and step == 0:
         try:
             pid = int(text)
@@ -1607,7 +1597,6 @@ def handle_state_text(message, st):
         send_clean(chat_id, f"✅ Описание обновлено для ID <code>{pid}</code>.", reply_markup=admin_main_menu())
         return
 
-    # order admin actions
     if action == "order_reject_reason":
         oid = int(data.get("order_id"))
         reason = text or "Оплата отклонена"
@@ -1632,7 +1621,6 @@ def handle_state_text(message, st):
         clear_state(uid)
         return
 
-    # AI operator
     if action == "ai_operator_full":
         raw, obj = ai_operator_plan(uid, text)
         if not obj:
@@ -1699,9 +1687,7 @@ def callback_handler(call):
         bot.answer_callback_query(call.id)
         return
 
-    # shop list pagination (NEW)
     if data.startswith("shop_") and "_list_" in data:
-        # shop_{ptype}_list_{n}
         parts = data.split("_")
         if len(parts) < 4:
             bot.answer_callback_query(call.id, "Ошибка.", show_alert=True)
@@ -1720,9 +1706,7 @@ def callback_handler(call):
         bot.answer_callback_query(call.id)
         return
 
-    # open product page (NEW)
     if data.startswith("prod_open_"):
-        # prod_open_{ptype}_{pid}
         parts = data.split("_")
         if len(parts) < 4:
             bot.answer_callback_query(call.id, "Ошибка.", show_alert=True)
@@ -1745,9 +1729,7 @@ def callback_handler(call):
         bot.answer_callback_query(call.id)
         return
 
-    # product nav by index (NEW)
     if data.startswith("prod_nav_"):
-        # prod_nav_{ptype}_{idx}
         parts = data.split("_")
         if len(parts) < 4:
             bot.answer_callback_query(call.id, "Ошибка.", show_alert=True)
@@ -1769,7 +1751,6 @@ def callback_handler(call):
         bot.answer_callback_query(call.id)
         return
 
-    # add from product page (NEW)
     if data.startswith("prod_add_"):
         try:
             pid = int(data.split("_")[-1])
@@ -1794,7 +1775,6 @@ def callback_handler(call):
         bot.send_message(chat_id, "Введите ID товара, чтобы добавить в корзину (или «Отмена»):")
         return
 
-    # cart callbacks
     if data == "cart_clear":
         clear_cart(uid)
         send_clean(chat_id, "🧺 Корзина очищена.", reply_markup=main_menu())
@@ -1832,7 +1812,6 @@ def callback_handler(call):
         bot.answer_callback_query(call.id)
         return
 
-    # dispute menu (FIXED: no loop)
     if data.startswith("dispute_menu_"):
         try:
             oid = int(data.split("_")[-1])
@@ -1872,9 +1851,7 @@ def callback_handler(call):
         bot.send_message(chat_id, f"✉️ Напишите сообщение для поддержки по заказу <b>#{oid}</b> (или «Отмена»):")
         return
 
-    # admin: reply to dispute message (NEW)
     if data.startswith("dispute_reply_") and is_admin(uid):
-        # dispute_reply_{order_id}_{user_id}
         parts = data.split("_")
         if len(parts) < 4:
             bot.answer_callback_query(call.id, "Ошибка.", show_alert=True)
@@ -1890,7 +1867,6 @@ def callback_handler(call):
         bot.send_message(chat_id, f"↩️ Введите ответ пользователю <code>{target_uid}</code> по заказу <b>#{order_id}</b> (или «Отмена»):")
         return
 
-    # admin panel navigation
     if data == "admin_back_main":
         send_clean(chat_id, "Админ-панель:", reply_markup=admin_main_menu())
         bot.answer_callback_query(call.id)
@@ -2008,7 +1984,6 @@ def callback_handler(call):
         bot.answer_callback_query(call.id)
         return
 
-    # AI panel
     if data == "ai_info_scout" and is_admin(uid):
         bot.answer_callback_query(call.id)
         bot.send_message(chat_id, "Vision-модель: <b>meta-llama/llama-4-scout-17b-16e-instruct</b>")
@@ -2053,7 +2028,6 @@ def callback_handler(call):
             restart_self()
         return
 
-    # payment check
     if data.startswith("check_payment_") or data.startswith("check_payment_deep_"):
         deep = data.startswith("check_payment_deep_")
         try:
@@ -2135,7 +2109,17 @@ def callback_handler(call):
 
 # ================== MAIN LOOP (no crash) ==================
 
-if __name__ == "__main__":
+app = Flask(__name__)
+
+@app.get("/")
+def root():
+    return "OK", 200
+
+@app.get("/health")
+def health():
+    return "OK", 200
+
+def _run_polling_forever():
     ensure_files()
     while True:
         try:
@@ -2143,3 +2127,9 @@ if __name__ == "__main__":
         except Exception as e:
             log_error("infinity_polling", e)
             time.sleep(2)
+
+if __name__ == "__main__":
+    t = threading.Thread(target=_run_polling_forever, daemon=True)
+    t.start()
+    port = int(os.environ.get("PORT", "10000"))
+    app.run(host="0.0.0.0", port=port)
