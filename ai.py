@@ -27,8 +27,8 @@ import threading
 
 # ================== НАСТРОЙКИ ==================
 
-TOKEN = os.environ.get("BOT_TOKEN", "8548607252:AAFFzd__XttKj6GxcFh_IygRQbgTu7-xL68").strip()
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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").strip()
+TOKEN = os.environ.get("BOT_TOKEN", "").strip()
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
 
 if not TOKEN:
     raise RuntimeError("BOT_TOKEN is not set. Please export BOT_TOKEN env var.")
